@@ -83,7 +83,7 @@ export default function StudyPlanGenerator() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Gerador de Planos de Estudo com{' '}
-            <span className="text-purple-600">IA</span>
+            <span className="text-custom-purple">IA</span>
           </h1>
           <p className="text-lg text-gray-600">
             Digite o nome da disciplina e nossa inteligência artificial criará
@@ -102,12 +102,13 @@ export default function StudyPlanGenerator() {
               className="flex-grow px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
             <button
-              onClick={generateStudyPlan}
-              disabled={isGenerating || !discipline.trim()}
-              className="px-6 py-3 bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isGenerating ? 'Gerando...' : 'Gerar Plano'}
-            </button>
+  onClick={generateStudyPlan}
+  disabled={isGenerating || !discipline.trim()}
+  className="px-6 py-3 bg-primary text-white font-medium rounded-md hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {isGenerating ? 'Gerando...' : 'Gerar Plano'}
+</button>
+
           </div>
         </div>
 
