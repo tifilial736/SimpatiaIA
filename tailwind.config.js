@@ -3,26 +3,22 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
-      colors: {
-        primary: {
-          DEFAULT: '#155EEF', // Azul principal
-          dark: '#0F3BFF', // Azul escuro
-          light: '#1E40AF', // Azul claro
-        },
-        secondary: {
-          DEFAULT: '#9333EA', // Roxo principal
-          dark: '#7E22CE',
-          light: '#C084FC',
-        },
-        neutral: {
-          900: '#111827', // Preto/Cinza escuro
-          600: '#6B7280', // Cinza médio
-          200: '#E5E7EB', // Cinza claro
-          50: '#F9FAFB', // Fundo bem claro
-        },
-      },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui'], // Fonte do Figma
+        sans: ['system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],
+      },
+      colors: {
+        primary: '#4904C8',     // cor do botão principal
+        secondary: '#646cff',   // links, hover e destaques
+        'custom-purple': 'rgb(73, 3, 199)', // para "IA"
+        neutral: {
+          50: '#F9FAFB',
+          100: '#F3F4F6',
+          200: '#E5E7EB',
+          500: '#6B7280',
+          600: '#4B5563',
+          800: '#1F2937',
+          900: '#242424',       // fundo escuro
+        },
       },
     },
   },
