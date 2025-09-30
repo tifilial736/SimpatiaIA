@@ -9,6 +9,7 @@ export default function StudyPlanGenerator() {
   const [studyGoal, setStudyGoal] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [studyPlan, setStudyPlan] = useState(null);
+  const [error, setError] = useState("");
 
   const availableDisciplines = [
     "Cálculo I",
@@ -18,6 +19,9 @@ export default function StudyPlanGenerator() {
     "Engenharia de Software",
     "Estatística",
     "Estruturas de Dados",
+    "Física I",
+    "Química Geral",
+    "Circuitos Elétricos"
   ];
 
   const knowledgeLevels = [
@@ -32,6 +36,8 @@ export default function StudyPlanGenerator() {
     "Dominar a matéria completamente",
     "Revisão para exame final",
     "Aprender para projeto prático",
+    "Preparação para concurso",
+    "Desenvolvimento profissional"
   ];
 
   const calculateDaysAvailable = () => {
@@ -44,11 +50,121 @@ export default function StudyPlanGenerator() {
     return diffDays;
   };
 
-  // Cliente OpenAI - descomente e configure sua API key
-  // const client = new OpenAI({
-  //   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  //   dangerouslyAllowBrowser: true,
-  // });
+  // Função para gerar plano com OpenAI
+  const generateStudyPlanWithOpenAI = async () => {
+    const daysAvailable = calculateDaysAvailable();
+    const totalHoursAvailable = daysAvailable * parseInt(dailyHours);
+
+    const prompt = `Como especialista em educação universitária, crie um plano de estudo DETALHADO e REALISTA em formato JSON válido.
+
+CONTEXTO:
+- Disciplina: ${discipline}
+- Nível do aluno: ${knowledgeLevel}
+- Horas diárias disponíveis: ${dailyHours}h
+- Dias até o prazo: ${daysAvailable} dias
+- Total de horas disponíveis: ${totalHoursAvailable}h
+- Objetivo: ${studyGoal}
+
+CRIE um plano ESPECÍFICO com:
+
+1. MÓDULOS DE ESTUDO (2-3 módulos):
+   - Títulos específicos da disciplina
+   - Duração realista em semanas
+   - 5-7 tópicos teóricos CONCRETOS (não genéricos)
+   - 3-4 aplicações práticas REAIS
+   - Cronograma semanal detalhado
+
+2. ESTRUTURA EXATA DO JSON:
+{
+  "discipline": "${discipline}",
+  "totalDuration": "X semanas",
+  "realityCheck": "Análise realista sobre o tempo disponível",
+  "modules": [
+    {
+      "title": "Título específico do módulo 1",
+      "duration": "X semanas",
+      "topics": [
+        "tópico específico 1",
+        "tópico específico 2",
+        "tópico específico 3"
+      ],
+      "practicalApplications": [
+        "aplicação prática 1",
+        "aplicação prática 2"
+      ],
+      "weeklySchedule": {
+        "Segunda": "atividade específica - Xh",
+        "Quarta": "atividade específica - Yh",
+        "Sexta": "atividade específica - Zh"
+      }
+    }
+  ],
+  "weeklyGoals": [
+    "Meta específica para semana 1",
+    "Meta específica para semana 2"
+  ],
+  "recommendations": [
+    "Recomendação específica 1",
+    "Recomendação específica 2"
+  ],
+  "studyTips": [
+    "Dica de estudo específica 1",
+    "Dica de estudo específica 2"
+  ]
+}
+
+IMPORTANTE:
+- Seja ESPECÍFICO na disciplina ${discipline}
+- Inclua tópicos REAIS de universidades
+- Aplicações PRÁTICAS do mundo real
+- Cronograma EXECUTÁVEL
+- Responda SOMENTE com o JSON válido`;
+
+    try {
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      
+      if (!apiKey) {
+        throw new Error('Chave da OpenAI não encontrada. Configure VITE_OPENAI_API_KEY no arquivo .env');
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 3000
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Erro OpenAI: ${errorData.error?.message || response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      
+      // Limpa e parse o JSON
+      const cleanedContent = content.replace(/```json|```/g, '').trim();
+      const aiPlan = JSON.parse(cleanedContent);
+      
+      return aiPlan;
+
+    } catch (error) {
+      console.error('Erro na chamada da OpenAI:', error);
+      throw new Error(`Falha na geração: ${error.message}`);
+    }
+  };
 
   const generateStudyPlan = async () => {
     if (!discipline.trim() || !dailyHours.trim() || !knowledgeLevel || !deadline || !studyGoal) {
@@ -63,177 +179,31 @@ export default function StudyPlanGenerator() {
       return;
     }
 
+    if (daysAvailable < 1) {
+      alert("Você precisa de pelo menos 1 dia para gerar um plano de estudo!");
+      return;
+    }
+
     setIsGenerating(true);
+    setError("");
+    setStudyPlan(null);
 
     try {
-      const totalHoursAvailable = daysAvailable * parseInt(dailyHours);
+      const aiPlan = await generateStudyPlanWithOpenAI();
       
-      // SIMULAÇÃO INTELIGENTE - Para usar OpenAI real, veja instruções no final do código
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const parsedPlan = {
-        discipline: discipline,
-        knowledgeLevel: knowledgeLevel,
+      // Adiciona dados do formulário ao plano da IA
+      const completePlan = {
+        ...aiPlan,
+        knowledgeLevel,
         dailyHours: parseInt(dailyHours),
-        daysAvailable: daysAvailable,
-        totalDuration: daysAvailable <= 3 
-          ? `${totalHoursAvailable} horas` 
-          : daysAvailable <= 7 
-          ? `${daysAvailable} dias` 
-          : `${Math.ceil(daysAvailable / 7)} semanas`,
-        urgencyLevel: daysAvailable <= 1 
-          ? "crítico" 
-          : daysAvailable <= 3 
-          ? "urgente" 
-          : daysAvailable <= 21 
-          ? "moderado" 
-          : "confortável",
-        realityCheck: daysAvailable <= 1
-          ? `Com apenas ${totalHoursAvailable}h disponíveis, não será possível dominar toda a matéria. Foque em revisar os tópicos mais importantes e fazer exercícios típicos de prova.`
-          : daysAvailable <= 3
-          ? `Tempo muito limitado! Foque apenas no essencial: fórmulas principais, conceitos-chave e exercícios mais comuns. Priorize qualidade sobre quantidade.`
-          : daysAvailable <= 7
-          ? `Uma semana é suficiente para uma revisão sólida se você mantiver disciplina. Distribua bem o tempo entre teoria e prática.`
-          : `Você tem tempo adequado para estudar com profundidade. Mantenha a consistência e alcançará ótimos resultados!`,
-        studyGoal: studyGoal,
-        modules: daysAvailable <= 3 ? [
-          {
-            title: "Revisão Intensiva - Tópicos Essenciais",
-            duration: `${Math.floor(totalHoursAvailable * 0.6)}h`,
-            topics: [
-              "Conceitos fundamentais mais cobrados",
-              "Fórmulas e teoremas principais",
-              "Exemplos clássicos de prova"
-            ],
-            resources: [
-              { type: "PDF", name: "Resumo esquemático da matéria", priority: "alta" },
-              { type: "Vídeo", name: "Revisão rápida 30min - YouTube", priority: "alta" }
-            ],
-            dailySchedule: {
-              "Hoje": "Revisar teoria essencial - 2h",
-              "Amanhã": "Exercícios típicos de prova - 2h"
-            }
-          },
-          {
-            title: "Prática e Simulação",
-            duration: `${Math.floor(totalHoursAvailable * 0.4)}h`,
-            topics: [
-              "Questões de provas anteriores",
-              "Exercícios mais frequentes",
-              "Macetes e atalhos importantes"
-            ],
-            resources: [
-              { type: "Exercícios", name: "Lista de questões de provas anteriores", priority: "alta" },
-              { type: "Simulado", name: "Mini-simulado cronometrado", priority: "média" }
-            ],
-            dailySchedule: {
-              "Hoje": "Resolver exercícios - 1h30",
-              "Amanhã": "Simulado rápido - 1h"
-            }
-          }
-        ] : [
-          {
-            title: "Fundamentos e Base Teórica",
-            duration: daysAvailable <= 7 ? "Dias 1-2" : "Semana 1",
-            topics: [
-              "Conceitos introdutórios",
-              "Definições e terminologia",
-              "Teoremas fundamentais",
-              "Exemplos básicos"
-            ],
-            resources: [
-              { type: "Vídeo", name: "Playlist introdutória - Khan Academy", priority: "alta" },
-              { type: "PDF", name: "Apostila básica da disciplina", priority: "alta" },
-              { type: "Exercícios", name: "Lista 1 - Exercícios básicos", priority: "média" }
-            ],
-            dailySchedule: {
-              "Segunda": "Estudo teórico - 2h",
-              "Terça": "Exercícios de fixação - 1h30",
-              "Quarta": "Revisão e dúvidas - 1h"
-            }
-          },
-          {
-            title: "Aprofundamento e Prática",
-            duration: daysAvailable <= 7 ? "Dias 3-5" : "Semanas 2-3",
-            topics: [
-              "Conceitos intermediários",
-              "Resolução de problemas complexos",
-              "Aplicações práticas",
-              "Estudos de caso"
-            ],
-            resources: [
-              { type: "Vídeo", name: "Aulas práticas - YouTube", priority: "alta" },
-              { type: "Livro", name: "Capítulos 3-5 do livro-texto", priority: "média" },
-              { type: "Exercícios", name: "Lista 2 - Exercícios intermediários", priority: "alta" }
-            ],
-            dailySchedule: {
-              "Segunda": "Teoria avançada - 2h",
-              "Quarta": "Exercícios práticos - 2h",
-              "Sexta": "Projeto/Estudo de caso - 1h30"
-            }
-          },
-          {
-            title: "Consolidação e Preparação Final",
-            duration: daysAvailable <= 7 ? "Dias 6-7" : "Última semana",
-            topics: [
-              "Revisão geral de todos os módulos",
-              "Simulados completos",
-              "Questões de provas anteriores",
-              "Resolução de dúvidas finais"
-            ],
-            resources: [
-              { type: "Simulado", name: "Prova modelo completa", priority: "alta" },
-              { type: "PDF", name: "Resumo geral da disciplina", priority: "alta" },
-              { type: "Exercícios", name: "Questões mais difíceis", priority: "média" }
-            ],
-            dailySchedule: {
-              "Segunda": "Revisão módulo 1 - 2h",
-              "Quarta": "Simulado completo - 3h",
-              "Sexta": "Revisão final - 2h"
-            }
-          }
-        ],
-        weeklyGoals: daysAvailable <= 3 ? [
-          `Revisar os ${totalHoursAvailable < 6 ? '3-5' : '5-8'} tópicos mais importantes`,
-          "Resolver pelo menos 20 exercícios típicos de prova",
-          "Identificar e focar nos pontos fracos"
-        ] : [
-          "Semana 1: Dominar fundamentos e completar 50% dos exercícios básicos",
-          "Semana 2-3: Aprofundar conhecimento e resolver 80% dos exercícios intermediários",
-          "Última semana: Revisão geral e simulados - estar 90% preparado"
-        ],
-        recommendations: [
-          daysAvailable <= 3 
-            ? "Elimine TODAS as distrações - este é o momento crucial"
-            : "Estude sempre no mesmo horário para criar rotina",
-          "Faça pausas de 5-10 minutos a cada hora",
-          daysAvailable <= 3
-            ? "Foque APENAS nos tópicos que têm mais chance de cair"
-            : "Revise os conceitos no dia seguinte (revisão espaçada)",
-          "Durma bem - seu cérebro precisa consolidar o aprendizado",
-          `Total de ${totalHoursAvailable}h disponíveis até ${deadline}`
-        ],
-        studyTips: [
-          "📝 Técnica Pomodoro: 25min foco + 5min pausa",
-          "🎯 Faça resumos com suas próprias palavras",
-          daysAvailable <= 3 
-            ? "⚡ Priorize exercícios sobre teoria neste momento"
-            : "💪 Pratique exercícios ANTES de achar que dominou a teoria",
-          "🔄 Ensine alguém - melhor forma de fixar",
-          "📱 Mantenha o celular longe durante o estudo"
-        ],
-        priorityTopics: daysAvailable <= 7 ? [
-          "Conceitos mais cobrados em provas",
-          "Fórmulas e teoremas principais",
-          "Tipos de exercícios mais comuns",
-          "Erros frequentes a evitar"
-        ] : []
+        daysAvailable,
+        studyGoal
       };
-      
-      setStudyPlan(parsedPlan);
+
+      setStudyPlan(completePlan);
     } catch (error) {
       console.error("Erro ao gerar plano de estudo:", error);
-      alert("Erro ao gerar plano de estudo. Tente novamente.");
+      setError(error.message);
     } finally {
       setIsGenerating(false);
     }
@@ -251,39 +221,39 @@ Horas diárias: ${studyPlan.dailyHours}h
 Dias disponíveis: ${studyPlan.daysAvailable}
 Duração: ${studyPlan.totalDuration}
 Objetivo: ${studyPlan.studyGoal}
-Urgência: ${studyPlan.urgencyLevel}
 
 ${studyPlan.realityCheck ? `
-AVALIAÇÃO REALISTA:
+ANÁLISE DA IA:
 ${studyPlan.realityCheck}
 ` : ''}
 
-${studyPlan.priorityTopics ? `
-TÓPICOS PRIORITÁRIOS:
-${studyPlan.priorityTopics.map(t => `- ${t}`).join('\n')}
-` : ''}
-
-MÓDULOS:
+MÓDULOS DE ESTUDO:
 ${studyPlan.modules.map((module, i) => `
 ${i + 1}. ${module.title} (${module.duration})
-   Tópicos:
-   ${module.topics.map(t => `   - ${t}`).join('\n')}
+   CONTEÚDO TEÓRICO:
+   ${module.topics.map(t => `   • ${t}`).join('\n')}
    
-   ${module.resources ? `Recursos (por prioridade):
-   ${module.resources.map(r => `   [${r.priority.toUpperCase()}] ${r.type}: ${r.name}`).join('\n')}` : ''}
+   ${module.practicalApplications ? `APLICAÇÕES PRÁTICAS:
+   ${module.practicalApplications.map(app => `   ◦ ${app}`).join('\n')}` : ''}
    
-   Cronograma:
-   ${Object.entries(module.dailySchedule || module.weeklySchedule || {}).map(([day, task]) => `   ${day}: ${task}`).join('\n')}
+   ${module.weeklySchedule ? `CRONOGRAMA SEMANAL:
+   ${Object.entries(module.weeklySchedule).map(([day, task]) => `   ${day}: ${task}`).join('\n')}` : ''}
 `).join('\n')}
 
+${studyPlan.weeklyGoals ? `
 METAS:
 ${studyPlan.weeklyGoals.map(g => `- ${g}`).join('\n')}
+` : ''}
 
+${studyPlan.recommendations ? `
 RECOMENDAÇÕES:
 ${studyPlan.recommendations.map(r => `- ${r}`).join('\n')}
+` : ''}
 
+${studyPlan.studyTips ? `
 DICAS DE ESTUDO:
-${studyPlan.studyTips.map(t => `${t}`).join('\n')}
+${studyPlan.studyTips.map(t => `- ${t}`).join('\n')}
+` : ''}
     `;
     
     const blob = new Blob([planText], { type: 'text/plain' });
@@ -297,10 +267,10 @@ ${studyPlan.studyTips.map(t => `${t}`).join('\n')}
   const getUrgencyColor = () => {
     if (!studyPlan) return 'from-purple-600 to-blue-600';
     
-    const urgency = studyPlan.urgencyLevel?.toLowerCase() || '';
-    if (urgency.includes('crítico')) return 'from-red-600 to-orange-600';
-    if (urgency.includes('urgente')) return 'from-orange-500 to-yellow-500';
-    if (urgency.includes('moderado')) return 'from-blue-500 to-cyan-500';
+    const days = studyPlan.daysAvailable;
+    if (days <= 1) return 'from-red-600 to-orange-600';
+    if (days <= 3) return 'from-orange-500 to-yellow-500';
+    if (days <= 7) return 'from-blue-500 to-cyan-500';
     return 'from-green-500 to-emerald-500';
   };
 
@@ -312,20 +282,19 @@ ${studyPlan.studyTips.map(t => `${t}`).join('\n')}
           <div className="flex items-center justify-center mb-4">
             <BookOpen className="w-12 h-12 text-purple-600 mr-3" />
             <h1 className="text-5xl font-bold text-gray-900">
-              Plano de Estudo <span className="text-purple-600">Inteligente</span>
+              Plano de Estudo <span className="text-purple-600">com IA</span>
             </h1>
           </div>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Crie um plano personalizado com IA que se adapta ao seu tempo, conhecimento e objetivos.
-            A IA ajusta o conteúdo de forma inteligente baseado no prazo disponível!
+            Planos 100% gerados por OpenAI com conteúdo específico e aplicações práticas.
           </p>
         </div>
 
-        {/* Formulário Aprimorado */}
+        {/* Formulário */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
             <Target className="w-6 h-6 mr-2 text-purple-600" />
-            Configure seu Plano de Estudo
+            Configure seu Plano
           </h2>
           
           <div className="grid md:grid-cols-2 gap-6">
@@ -349,7 +318,7 @@ ${studyPlan.studyTips.map(t => `${t}`).join('\n')}
             {/* Horas diárias */}
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
-                ⏰ Horas disponíveis por dia
+                ⏰ Horas por dia
               </label>
               <input
                 type="number"
@@ -365,7 +334,7 @@ ${studyPlan.studyTips.map(t => `${t}`).join('\n')}
             {/* Nível de conhecimento */}
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
-                📊 Seu nível atual
+                📊 Seu nível
               </label>
               <select
                 value={knowledgeLevel}
@@ -382,7 +351,7 @@ ${studyPlan.studyTips.map(t => `${t}`).join('\n')}
             {/* Data limite */}
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
-                📅 Data limite (prova/projeto)
+                📅 Data limite
               </label>
               <input
                 type="date"
@@ -392,11 +361,11 @@ ${studyPlan.studyTips.map(t => `${t}`).join('\n')}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
               />
               {deadline && (
-                <p className="text-sm text-gray-600 mt-2">
-                  {calculateDaysAvailable() === 0 && "⚠️ Prova HOJE!"}
-                  {calculateDaysAvailable() === 1 && "⚠️ Prova AMANHÃ!"}
-                  {calculateDaysAvailable() > 1 && calculateDaysAvailable() <= 3 && `⚠️ ${calculateDaysAvailable()} dias - Urgente!`}
-                  {calculateDaysAvailable() > 3 && `📅 ${calculateDaysAvailable()} dias disponíveis`}
+                <p className={`text-sm mt-2 font-medium ${
+                  calculateDaysAvailable() <= 3 ? 'text-red-600' : 
+                  calculateDaysAvailable() <= 7 ? 'text-orange-600' : 'text-green-600'
+                }`}>
+                  {calculateDaysAvailable()} dias disponíveis
                 </p>
               )}
             </div>
@@ -419,16 +388,22 @@ ${studyPlan.studyTips.map(t => `${t}`).join('\n')}
             </div>
           </div>
 
-          {/* Alerta informativo */}
-          <div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
-            <div className="flex items-start">
-              <AlertCircle className="w-5 h-5 text-blue-500 mr-3 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-blue-800">
-                <strong>Inteligência Adaptativa:</strong> A IA vai analisar seu prazo e criar um plano realista. 
-                Se a prova for em breve, você receberá um plano de revisão intensiva focado no essencial!
-              </p>
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
+              <div className="flex items-start">
+                <AlertCircle className="w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-red-800 font-semibold">Erro na geração:</p>
+                  <p className="text-sm text-red-700 mt-1">{error}</p>
+                  {error.includes('Chave da OpenAI') && (
+                    <p className="text-xs text-red-600 mt-2">
+                      Configure VITE_OPENAI_API_KEY no arquivo .env com sua chave da OpenAI
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Botão de gerar */}
           <button
@@ -439,12 +414,12 @@ ${studyPlan.studyTips.map(t => `${t}`).join('\n')}
             {isGenerating ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                Gerando seu plano personalizado...
+                OpenAI gerando seu plano...
               </>
             ) : (
               <>
                 <TrendingUp className="w-5 h-5 mr-2" />
-                Gerar Plano de Estudo Inteligente
+                Gerar Plano com OpenAI
               </>
             )}
           </button>
@@ -457,7 +432,7 @@ ${studyPlan.studyTips.map(t => `${t}`).join('\n')}
             <div className={`bg-gradient-to-r ${getUrgencyColor()} rounded-2xl shadow-xl p-8 text-white`}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-3xl font-bold">
-                  Seu Plano: {studyPlan.discipline}
+                  Plano: {studyPlan.discipline}
                 </h2>
                 <button
                   onClick={exportPlan}
@@ -475,164 +450,155 @@ ${studyPlan.studyTips.map(t => `${t}`).join('\n')}
                 </div>
                 <div className="bg-white/20 rounded-lg p-3">
                   <Calendar className="w-5 h-5 mb-1" />
-                  <div className="font-semibold">Dias Disponíveis</div>
+                  <div className="font-semibold">Dias</div>
                   <div>{studyPlan.daysAvailable} dias</div>
                 </div>
                 <div className="bg-white/20 rounded-lg p-3">
                   <Target className="w-5 h-5 mb-1" />
-                  <div className="font-semibold">Horas por Dia</div>
-                  <div>{studyPlan.dailyHours}h diárias</div>
+                  <div className="font-semibold">Horas/Dia</div>
+                  <div>{studyPlan.dailyHours}h</div>
                 </div>
                 <div className="bg-white/20 rounded-lg p-3">
                   <TrendingUp className="w-5 h-5 mb-1" />
-                  <div className="font-semibold">Urgência</div>
-                  <div className="capitalize">{studyPlan.urgencyLevel}</div>
+                  <div className="font-semibold">Status</div>
+                  <div className="capitalize">
+                    {studyPlan.daysAvailable <= 3 ? 'Urgente' : 
+                     studyPlan.daysAvailable <= 7 ? 'Moderado' : 'Confortável'}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Avaliação Realista */}
             {studyPlan.realityCheck && (
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-r-2xl shadow-lg p-6">
-                <h3 className="text-xl font-bold text-yellow-900 mb-3 flex items-center">
+              <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-2xl shadow-lg p-6">
+                <h3 className="text-xl font-bold text-blue-900 mb-3 flex items-center">
                   <AlertCircle className="w-6 h-6 mr-2" />
-                  Avaliação Realista do Seu Tempo
+                  Análise da OpenAI
                 </h3>
-                <p className="text-yellow-800 text-lg">{studyPlan.realityCheck}</p>
-              </div>
-            )}
-
-            {/* Tópicos Prioritários */}
-            {studyPlan.priorityTopics && studyPlan.priorityTopics.length > 0 && (
-              <div className="bg-red-50 border-l-4 border-red-500 rounded-r-2xl shadow-lg p-6">
-                <h3 className="text-xl font-bold text-red-900 mb-3">🎯 FOQUE NESTES TÓPICOS PRIMEIRO</h3>
-                <div className="grid md:grid-cols-2 gap-3">
-                  {studyPlan.priorityTopics.map((topic, idx) => (
-                    <div key={idx} className="flex items-center p-3 bg-white rounded-lg border-2 border-red-200">
-                      <span className="font-bold text-red-600 mr-2">{idx + 1}.</span>
-                      <span className="text-gray-800 font-medium">{topic}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-blue-800 text-lg">{studyPlan.realityCheck}</p>
               </div>
             )}
 
             {/* Módulos de Estudo */}
             <div className="bg-white rounded-2xl shadow-xl p-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-6">📖 Módulos de Estudo</h3>
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {studyPlan.modules.map((module, index) => (
                   <div key={index} className="border-l-4 border-purple-500 bg-gray-50 rounded-r-xl p-6">
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between mb-6">
                       <div>
                         <h4 className="text-xl font-bold text-gray-900">
                           Módulo {index + 1}: {module.title}
                         </h4>
-                        <span className="inline-block mt-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+                        <span className="inline-block mt-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
                           {module.duration}
                         </span>
                       </div>
                     </div>
 
-                    {/* Tópicos */}
-                    <div className="mb-4">
-                      <h5 className="font-semibold text-gray-700 mb-2">📝 Tópicos:</h5>
-                      <ul className="grid md:grid-cols-2 gap-2">
+                    {/* Tópicos Teóricos */}
+                    <div className="mb-6">
+                      <h5 className="font-semibold text-gray-700 mb-3 flex items-center">
+                        <BookOpen className="w-5 h-5 mr-2" />
+                        Conteúdo Teórico
+                      </h5>
+                      <ul className="grid md:grid-cols-2 gap-3">
                         {module.topics.map((topic, idx) => (
-                          <li key={idx} className="flex items-start">
-                            <span className="text-purple-500 mr-2">•</span>
+                          <li key={idx} className="flex items-start p-3 bg-white rounded-lg border border-gray-200">
+                            <span className="text-purple-500 mr-2 text-lg">•</span>
                             <span className="text-gray-700">{topic}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
 
-                    {/* Recursos por Prioridade */}
-                    {module.resources && module.resources.length > 0 && (
-                      <div className="mb-4">
-                        <h5 className="font-semibold text-gray-700 mb-2">📚 Recursos (por prioridade):</h5>
-                        <div className="space-y-2">
-                          {module.resources
-                            .sort((a, b) => {
-                              const priority = { alta: 1, média: 2, media: 2, baixa: 3 };
-                              return (priority[a.priority.toLowerCase()] || 3) - (priority[b.priority.toLowerCase()] || 3);
-                            })
-                            .map((resource, idx) => (
-                              <div key={idx} className={`px-3 py-2 rounded-lg text-sm flex items-center ${
-                                resource.priority.toLowerCase() === 'alta' 
-                                  ? 'bg-red-100 border-l-4 border-red-500 text-red-800' 
-                                  : resource.priority.toLowerCase() === 'média' || resource.priority.toLowerCase() === 'media'
-                                  ? 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'
-                                  : 'bg-green-100 border-l-4 border-green-500 text-green-800'
-                              }`}>
-                                <span className="font-bold mr-2">[{resource.priority.toUpperCase()}]</span>
-                                <span className="font-medium mr-2">{resource.type}:</span>
-                                <span>{resource.name}</span>
-                              </div>
-                            ))}
+                    {/* Aplicações Práticas */}
+                    {module.practicalApplications && (
+                      <div className="mb-6">
+                        <h5 className="font-semibold text-gray-700 mb-3 flex items-center">
+                          <Target className="w-5 h-5 mr-2" />
+                          Aplicações Práticas
+                        </h5>
+                        <div className="grid md:grid-cols-2 gap-3">
+                          {module.practicalApplications.map((app, idx) => (
+                            <div key={idx} className="flex items-start p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+                              <span className="text-green-600 font-bold mr-2">{idx + 1}.</span>
+                              <span className="text-gray-800">{app}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Cronograma */}
-                    <div>
-                      <h5 className="font-semibold text-gray-700 mb-2">📅 Cronograma:</h5>
-                      <div className="grid md:grid-cols-2 gap-2">
-                        {Object.entries(module.dailySchedule || module.weeklySchedule || {}).map(([day, task], idx) => (
-                          <div key={idx} className="flex items-center p-2 bg-white rounded-lg border border-gray-200">
-                            <span className="font-semibold text-purple-600 mr-2">{day}:</span>
-                            <span className="text-gray-700 text-sm">{task}</span>
-                          </div>
-                        ))}
+                    {/* Cronograma Semanal */}
+                    {module.weeklySchedule && (
+                      <div>
+                        <h5 className="font-semibold text-gray-700 mb-3 flex items-center">
+                          <Calendar className="w-5 h-5 mr-2" />
+                          Cronograma Semanal
+                        </h5>
+                        <div className="grid md:grid-cols-2 gap-3">
+                          {Object.entries(module.weeklySchedule).map(([day, task], idx) => (
+                            <div key={idx} className="flex items-center p-3 bg-white rounded-lg border border-gray-200">
+                              <span className="font-semibold text-purple-600 mr-3 min-w-20">{day}:</span>
+                              <span className="text-gray-700">{task}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Metas */}
-            {studyPlan.weeklyGoals && studyPlan.weeklyGoals.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-xl p-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">🎯 Metas do Plano</h3>
-                <div className="space-y-3">
-                  {studyPlan.weeklyGoals.map((goal, idx) => (
-                    <div key={idx} className="flex items-start p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
-                      <span className="font-bold text-green-600 mr-3">{idx + 1}.</span>
-                      <span className="text-gray-700">{goal}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Recomendações e Dicas */}
+            {/* Metas e Recomendações */}
             <div className="grid md:grid-cols-2 gap-6">
-              {/* Recomendações */}
-              <div className="bg-white rounded-2xl shadow-xl p-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">💡 Recomendações</h3>
-                <ul className="space-y-2">
-                  {studyPlan.recommendations.map((rec, idx) => (
-                    <li key={idx} className="flex items-start p-3 hover:bg-blue-50 rounded-lg transition">
-                      <span className="text-blue-500 mr-3 text-xl">→</span>
-                      <span className="text-gray-700">{rec}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {/* Metas Semanais */}
+              {studyPlan.weeklyGoals && (
+                <div className="bg-white rounded-2xl shadow-xl p-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4">🎯 Metas do Plano</h3>
+                  <div className="space-y-3">
+                    {studyPlan.weeklyGoals.map((goal, idx) => (
+                      <div key={idx} className="flex items-start p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                        <span className="font-bold text-blue-600 mr-3">{idx + 1}.</span>
+                        <span className="text-gray-700">{goal}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              {/* Dicas de Estudo */}
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl shadow-xl p-8 border-2 border-yellow-200">
+              {/* Recomendações */}
+              {studyPlan.recommendations && (
+                <div className="bg-white rounded-2xl shadow-xl p-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4">💡 Recomendações</h3>
+                  <ul className="space-y-3">
+                    {studyPlan.recommendations.map((rec, idx) => (
+                      <li key={idx} className="flex items-start p-3 bg-yellow-50 rounded-lg transition">
+                        <span className="text-yellow-500 mr-3 text-xl">→</span>
+                        <span className="text-gray-700">{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Dicas de Estudo */}
+            {studyPlan.studyTips && (
+              <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl shadow-xl p-8 border-2 border-purple-200">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">✨ Dicas de Estudo</h3>
-                <div className="space-y-3">
+                <div className="grid md:grid-cols-2 gap-4">
                   {studyPlan.studyTips.map((tip, idx) => (
-                    <div key={idx} className="flex items-start p-3 bg-white rounded-lg shadow-sm">
+                    <div key={idx} className="flex items-start p-4 bg-white rounded-lg shadow-sm border border-purple-100">
                       <span className="text-gray-700">{tip}</span>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
