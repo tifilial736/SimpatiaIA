@@ -14,7 +14,7 @@ export default function Hero() {
 </h1>
 
         <p className="mt-4 text-lg text-gray-600">
-          Gere planos de ensino personalizados para suas disciplinas com
+          Gere planos de estudo personalizados para suas disciplinas com
           inteligência artificial.
         </p>
         <button

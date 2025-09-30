@@ -3,11 +3,11 @@ import React, { useState } from 'react';
 const faqs = [
   {
     q: 'Como funciona o gerador de planos?',
-    a: 'A IA gera planos de ensino detalhados para qualquer atividade solicitada, ajudando o aluno a organizar seus estudos sem coletar informações pessoais.',
+    a: 'A IA gera planos de estudo detalhados para qualquer atividade solicitada, ajudando o aluno a organizar seus estudos sem coletar informações pessoais.',
   },
   {
     q: 'Posso personalizar as disciplinas?',
-    a: 'Sim! Você pode escolher quais matérias deseja estudar e a IA adaptará o plano de ensino para atender suas necessidades.',
+    a: 'Sim! Você pode escolher quais matérias deseja estudar e a IA adaptará o plano de estudo para atender suas necessidades.',
   },
   {
     q: 'É gratuito?',

@@ -3,7 +3,7 @@ import React from 'react';
 const modules = [
   {
     title: 'Gerador de Planos de Aulas',
-    desc: 'Gere planos de ensino detalhados para qualquer atividade, ajudando o aluno a organizar seus estudos rapidamente.',
+    desc: 'Gere planos de estudo detalhados para qualquer atividade, ajudando o aluno a organizar seus estudos rapidamente.',
   },
   {
     title: 'Controle de Disciplinas',
