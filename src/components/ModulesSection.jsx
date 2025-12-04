@@ -37,11 +37,7 @@ export default function ModulesSection() {
           ))}
         </div>
 
-        <div className="text-center mt-12">
-          <button className="px-6 py-3 bg-[#4904C8] text-white font-semibold rounded-xl hover:bg-[#3703A0] transition-shadow shadow-lg hover:shadow-xl">
-            Conheça os módulos
-          </button>
-        </div>
+        
       </div>
     </section>
   );

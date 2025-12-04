@@ -13,10 +13,43 @@ export default function StudyPlanGenerator() {
   const [hasDeadline, setHasDeadline] = useState(true);
 
   const availableDisciplines = [
-    "Cálculo I", "Álgebra Linear", "Programação Web", "Banco de Dados", 
-    "Engenharia de Software", "Estatística", "Estruturas de Dados",
-    "Física I", "Química Geral", "Circuitos Elétricos"
-  ];
+  // --- Computação ---
+  "Cálculo I", 
+  "Robótica", 
+  "Programação Web", 
+  "Banco de Dados", 
+  "Engenharia de Software", 
+  "Estatística",
+
+  // --- Medicina ---
+  "Fisiologia Humana",
+  "Bioquímica",
+  "Microbiologia",
+  "Patologia Geral",
+  "Farmacologia",
+
+  // --- Enfermagem ---
+  "Fundamentos de Enfermagem",
+  "Enfermagem em Saúde Pública",
+  "Enfermagem Obstétrica",
+  "Enfermagem Pediátrica",
+  "Enfermagem em Unidade de Terapia Intensiva",
+
+  // --- Direito ---
+  "Direito Constitucional",
+  "Direito Civil",
+  "Direito Penal",
+  "Direito Administrativo",
+  "Teoria Geral do Direito",
+
+  // --- Engenharia Civil ---
+  "Mecânica dos Materiais",
+  "Topografia",
+  "Materiais de Construção",
+  "Hidráulica",
+  "Resistência dos Materiais",
+];
+
 
   const knowledgeLevels = [
     { value: "iniciante", label: "Iniciante - Nunca estudei isso" },

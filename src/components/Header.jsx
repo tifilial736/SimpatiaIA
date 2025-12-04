@@ -8,11 +8,6 @@ export default function Header() {
       <div className="flex items-center gap-2">
         <img src={SimpatIaImg} alt="SIMPATia" className="h-10 w-auto" />
       </div>
-
-      {/* Botão */}
-      <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
-        Entrar
-      </button>
     </header>
   );
 }
