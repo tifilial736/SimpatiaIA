@@ -13,43 +13,42 @@ export default function StudyPlanGenerator() {
   const [hasDeadline, setHasDeadline] = useState(true);
 
   const availableDisciplines = [
-  // --- Computação ---
-  "Cálculo I", 
-  "Robótica", 
-  "Programação Web", 
-  "Banco de Dados", 
-  "Engenharia de Software", 
-  "Estatística",
+    // --- Computação ---
+    "Cálculo I", 
+    "Robótica", 
+    "Programação Web", 
+    "Banco de Dados", 
+    "Engenharia de Software", 
+    "Estatística",
 
-  // --- Medicina ---
-  "Fisiologia Humana",
-  "Bioquímica",
-  "Microbiologia",
-  "Patologia Geral",
-  "Farmacologia",
+    // --- Medicina ---
+    "Fisiologia Humana",
+    "Bioquímica",
+    "Microbiologia",
+    "Patologia Geral",
+    "Farmacologia",
 
-  // --- Enfermagem ---
-  "Fundamentos de Enfermagem",
-  "Enfermagem em Saúde Pública",
-  "Enfermagem Obstétrica",
-  "Enfermagem Pediátrica",
-  "Enfermagem em Unidade de Terapia Intensiva",
+    // --- Enfermagem ---
+    "Fundamentos de Enfermagem",
+    "Enfermagem em Saúde Pública",
+    "Enfermagem Obstétrica",
+    "Enfermagem Pediátrica",
+    "Enfermagem em Unidade de Terapia Intensiva",
 
-  // --- Direito ---
-  "Direito Constitucional",
-  "Direito Civil",
-  "Direito Penal",
-  "Direito Administrativo",
-  "Teoria Geral do Direito",
+    // --- Direito ---
+    "Direito Constitucional",
+    "Direito Civil",
+    "Direito Penal",
+    "Direito Administrativo",
+    "Teoria Geral do Direito",
 
-  // --- Engenharia Civil ---
-  "Mecânica dos Materiais",
-  "Topografia",
-  "Materiais de Construção",
-  "Hidráulica",
-  "Resistência dos Materiais",
-];
-
+    // --- Engenharia Civil ---
+    "Mecânica dos Materiais",
+    "Topografia",
+    "Materiais de Construção",
+    "Hidráulica",
+    "Resistência dos Materiais",
+  ];
 
   const knowledgeLevels = [
     { value: "iniciante", label: "Iniciante - Nunca estudei isso" },
@@ -68,7 +67,7 @@ export default function StudyPlanGenerator() {
   ];
 
   const calculateDaysAvailable = () => {
-    if (!hasDeadline || !deadline) return 30; // Default: 30 dias para estudo sem prazo
+    if (!hasDeadline || !deadline) return 30;
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -76,7 +75,7 @@ export default function StudyPlanGenerator() {
     deadlineDate.setHours(0, 0, 0, 0);
     const diffTime = deadlineDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(1, diffDays); // Mínimo 1 dia
+    return Math.max(1, diffDays);
   };
 
   const generateStudyPlanWithOpenAI = async () => {
@@ -84,7 +83,6 @@ export default function StudyPlanGenerator() {
     const totalHoursAvailable = daysAvailable * parseInt(dailyHours);
     const weeks = Math.ceil(daysAvailable / 7);
 
-    // Determina quantidade máxima de módulos baseado no tempo
     let maxModules;
     let intensity;
     let durationType;
@@ -218,38 +216,31 @@ SEJA BRUTALMENTE HONESTO sobre o que é REALMENTE POSSÍVEL fazer em ${daysAvail
 Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
 
     try {
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      
-      if (!apiKey) {
-        throw new Error('Configure VITE_OPENAI_API_KEY no arquivo .env');
-      }
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.7,
-          max_tokens: 4000
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4000,
+          messages: [
+            { role: "user", content: prompt }
+          ],
         })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Erro OpenAI: ${errorData.error?.message || response.status}`);
+        throw new Error(`Erro na API: ${response.status}`);
       }
 
       const data = await response.json();
-      const content = data.choices[0].message.content;
+      const content = data.content[0].text;
       const cleanedContent = content.replace(/```json|```/g, '').trim();
       return JSON.parse(cleanedContent);
 
     } catch (error) {
-      console.error('Erro na chamada da OpenAI:', error);
+      console.error('Erro na chamada da API:', error);
       throw new Error(`Falha na geração: ${error.message}`);
     }
   };
@@ -318,60 +309,172 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
     }
   };
 
-  const exportPlan = () => {
+  const exportToPDF = async () => {
     if (!studyPlan) return;
-    
-    const planText = `
-PLANO DE ESTUDO - ${studyPlan.discipline}
-=====================================
 
-📊 ANÁLISE DO TEMPO:
-- Nível: ${studyPlan.knowledgeLevel}
-- Horas diárias: ${studyPlan.dailyHours}h
-- Dias disponíveis: ${studyPlan.daysAvailable} dias
-- Duração total: ${studyPlan.totalDuration}
-- Intensidade: ${studyPlan.studyIntensity}
-- Objetivo: ${studyPlan.studyGoal}
-- Tipo: ${studyPlan.hasDeadline ? 'COM prazo' : 'SEM prazo específico'}
-- Probabilidade de sucesso: ${studyPlan.successProbability}
+    try {
+      // Importa jsPDF dinamicamente
+      const { default: jsPDF } = await import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const maxWidth = pageWidth - 2 * margin;
+      let yPosition = margin;
 
-${studyPlan.timeAssessment ? `
-🔍 ANÁLISE DE VIABILIDADE:
-${studyPlan.timeAssessment}
-` : ''}
+      // Função para adicionar nova página se necessário
+      const checkNewPage = (requiredSpace = 20) => {
+        if (yPosition + requiredSpace > pageHeight - margin) {
+          doc.addPage();
+          yPosition = margin;
+          return true;
+        }
+        return false;
+      };
 
-MÓDULOS DE ESTUDO (${studyPlan.modules?.length || 0} módulos):
-${studyPlan.modules?.map((module, i) => `
-${i + 1}. ${module.title} [${module.priority}] (${module.duration})
-   FOCO: ${module.focus}
-   
-   TÓPICOS ESSENCIAIS:
-   ${module.topics.map(t => `   • ${t}`).join('\n')}
-   
-   ${module.practicalApplications ? `APLICAÇÕES PRÁTICAS:
-   ${module.practicalApplications.map(app => `   ◦ ${app}`).join('\n')}` : ''}
-   
-   ${module.dailySchedule ? `CRONOGRAMA ${studyPlan.daysAvailable <= 3 ? 'DIÁRIO' : 'SEMANAL'}:
-   ${Object.entries(module.dailySchedule).map(([period, task]) => `   ${period}: ${task}`).join('\n')}` : ''}
-`).join('\n') || 'Nenhum módulo gerado'}
+      // Função para adicionar texto com quebra de linha
+      const addText = (text, fontSize, isBold = false, color = [0, 0, 0]) => {
+        doc.setFontSize(fontSize);
+        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+        doc.setTextColor(...color);
+        
+        const lines = doc.splitTextToSize(text, maxWidth);
+        lines.forEach(line => {
+          checkNewPage();
+          doc.text(line, margin, yPosition);
+          yPosition += fontSize * 0.5;
+        });
+        yPosition += 3;
+      };
 
-${studyPlan.goals ? `
-🎯 METAS REALISTAS:
-${studyPlan.goals.map(g => `• ${g}`).join('\n')}
-` : ''}
+      // Cabeçalho
+      doc.setFillColor(147, 51, 234); // Purple
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PLANO DE ESTUDO INTELIGENTE', pageWidth / 2, 20, { align: 'center' });
+      doc.setFontSize(14);
+      doc.text(studyPlan.discipline, pageWidth / 2, 32, { align: 'center' });
+      
+      yPosition = 50;
 
-${studyPlan.recommendations ? `
-💡 RECOMENDAÇÕES:
-${studyPlan.recommendations.map(r => `• ${r}`).join('\n')}
-` : ''}
-    `;
-    
-    const blob = new Blob([planText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `plano-${discipline.replace(/\s+/g, '-').toLowerCase()}.txt`;
-    a.click();
+      // Informações Gerais
+      doc.setTextColor(0, 0, 0);
+      addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
+      addText('📊 INFORMAÇÕES GERAIS', 16, true, [147, 51, 234]);
+      addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
+      yPosition += 5;
+
+      addText(`• Nível de Conhecimento: ${studyPlan.knowledgeLevel}`, 11);
+      addText(`• Horas Diárias: ${studyPlan.dailyHours}h`, 11);
+      addText(`• Dias Disponíveis: ${studyPlan.daysAvailable} dias`, 11);
+      addText(`• Duração Total: ${studyPlan.totalDuration}`, 11);
+      addText(`• Intensidade: ${studyPlan.studyIntensity}`, 11);
+      addText(`• Objetivo: ${studyPlan.studyGoal}`, 11);
+      addText(`• Tipo de Estudo: ${studyPlan.hasDeadline ? 'COM prazo definido' : 'Estudo contínuo'}`, 11);
+      addText(`• Probabilidade de Sucesso: ${studyPlan.successProbability}`, 11);
+      
+      yPosition += 5;
+
+      // Análise de Viabilidade
+      if (studyPlan.timeAssessment) {
+        checkNewPage(40);
+        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
+        addText('🔍 ANÁLISE DE VIABILIDADE', 16, true, [220, 38, 38]);
+        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
+        yPosition += 5;
+        addText(studyPlan.timeAssessment, 11);
+        yPosition += 5;
+      }
+
+      // Módulos
+      addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
+      addText(`📖 MÓDULOS DE ESTUDO (${studyPlan.modules?.length || 0} módulos)`, 16, true, [147, 51, 234]);
+      addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
+      yPosition += 5;
+
+      studyPlan.modules?.forEach((module, index) => {
+        checkNewPage(60);
+        
+        addText(`MÓDULO ${index + 1}: ${module.title}`, 14, true, [37, 99, 235]);
+        addText(`Duração: ${module.duration} | Prioridade: ${module.priority} | Foco: ${module.focus}`, 10);
+        yPosition += 3;
+
+        // Tópicos
+        addText('Tópicos Essenciais:', 12, true);
+        module.topics?.forEach((topic, idx) => {
+          addText(`  ${idx + 1}. ${topic}`, 10);
+        });
+        yPosition += 3;
+
+        // Aplicações Práticas
+        if (module.practicalApplications && module.practicalApplications.length > 0) {
+          addText('Aplicações Práticas:', 12, true);
+          module.practicalApplications.forEach((app, idx) => {
+            addText(`  ${idx + 1}. ${app}`, 10);
+          });
+          yPosition += 3;
+        }
+
+        // Cronograma
+        if (module.dailySchedule) {
+          addText(`Cronograma ${studyPlan.daysAvailable <= 3 ? 'Diário' : 'Semanal'}:`, 12, true);
+          Object.entries(module.dailySchedule).forEach(([period, task]) => {
+            addText(`  ${period}: ${task}`, 10);
+          });
+        }
+        
+        yPosition += 8;
+      });
+
+      // Metas
+      if (studyPlan.goals && studyPlan.goals.length > 0) {
+        checkNewPage(40);
+        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
+        addText('🎯 METAS REALISTAS', 16, true, [22, 163, 74]);
+        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
+        yPosition += 5;
+        studyPlan.goals.forEach((goal, idx) => {
+          addText(`${idx + 1}. ${goal}`, 11);
+        });
+        yPosition += 5;
+      }
+
+      // Recomendações
+      if (studyPlan.recommendations && studyPlan.recommendations.length > 0) {
+        checkNewPage(40);
+        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
+        addText('💡 RECOMENDAÇÕES', 16, true, [234, 179, 8]);
+        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
+        yPosition += 5;
+        studyPlan.recommendations.forEach((rec, idx) => {
+          addText(`• ${rec}`, 11);
+        });
+      }
+
+      // Rodapé
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(
+          `Gerado em ${new Date().toLocaleDateString('pt-BR')} | Página ${i} de ${totalPages}`,
+          pageWidth / 2,
+          pageHeight - 10,
+          { align: 'center' }
+        );
+      }
+
+      // Salvar PDF
+      doc.save(`plano-estudo-${discipline.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF. Tente novamente.');
+    }
   };
 
   return (
@@ -578,11 +681,11 @@ ${studyPlan.recommendations.map(r => `• ${r}`).join('\n')}
                   </p>
                 </div>
                 <button
-                  onClick={exportPlan}
+                  onClick={exportToPDF}
                   className="flex items-center px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-gray-100 transition font-semibold"
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Exportar
+                  Exportar PDF
                 </button>
               </div>
               <div className="grid md:grid-cols-4 gap-4 text-sm">
@@ -622,7 +725,7 @@ ${studyPlan.recommendations.map(r => `• ${r}`).join('\n')}
                   ? 'bg-yellow-50 border-yellow-500'
                   : 'bg-blue-50 border-blue-500'
               }`}>
-                <h3 className="text-xl font-bold mb-3 flex items-center ${
+                <h3 className={`text-xl font-bold mb-3 flex items-center ${
                   studyPlan.availableDays <= 1 
                     ? 'text-red-900' 
                     : studyPlan.availableDays <= 3 
@@ -630,7 +733,7 @@ ${studyPlan.recommendations.map(r => `• ${r}`).join('\n')}
                     : studyPlan.availableDays <= 7 
                     ? 'text-yellow-900'
                     : 'text-blue-900'
-                }">
+                }`}>
                   <Target className="w-6 h-6 mr-2" />
                   {studyPlan.availableDays <= 3 ? '🚨 ANÁLISE DE VIABILIDADE' : '🔍 ANÁLISE REALISTA'}
                 </h3>
