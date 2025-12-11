@@ -78,7 +78,7 @@ export default function StudyPlanGenerator() {
     return Math.max(1, diffDays);
   };
 
-  const generateStudyPlanWithOpenAI = async () => {
+  const generateStudyPlanWithAI = async () => {
     const daysAvailable = calculateDaysAvailable();
     const totalHoursAvailable = daysAvailable * parseInt(dailyHours);
     const weeks = Math.ceil(daysAvailable / 7);
@@ -164,83 +164,100 @@ REGRAS ESTRITAS:
 
 CRIE ATIVIDADES ESPECÍFICAS para ${discipline} considerando o tempo REAL.
 
-ESTRUTURA DO JSON:
+Responda APENAS com um JSON válido, sem texto adicional antes ou depois, SEM markdown. Use esta estrutura exata:
+
 {
   "discipline": "${discipline}",
   "totalDuration": "${durationType}",
   "studyIntensity": "${intensity}",
-  "timeAssessment": "Análise HONESTA sobre viabilidade baseada no tempo",
+  "timeAssessment": "Análise HONESTA sobre viabilidade baseada no tempo disponível",
   "totalHours": ${totalHoursAvailable},
   "availableDays": ${daysAvailable},
   "maxPossibleModules": ${maxModules},
   "successProbability": "${daysAvailable <= 3 ? 'baixa' : daysAvailable <= 7 ? 'média' : daysAvailable <= 14 ? 'alta' : 'muito alta'}",
   "modules": [
     {
-      "title": "Título que reflete a URGÊNCIA do tempo disponível",
-      "duration": "${daysAvailable <= 3 ? daysAvailable + ' dias' : '1 semana'}",
-      "priority": "${daysAvailable <= 3 ? 'CRÍTICO' : daysAvailable <= 7 ? 'ALTO' : 'MÉDIO'}",
-      "focus": "${daysAvailable <= 3 ? 'revisão emergencial' : daysAvailable <= 7 ? 'revisão focada' : 'aprendizado completo'}",
-      "topics": ["APENAS os tópicos MAIS importantes e frequentes"],
-      "practicalApplications": ["APENAS aplicações ESSENCIAIS e práticas"],
+      "title": "Título do módulo específico para ${discipline}",
+      "duration": "duração apropriada",
+      "priority": "CRÍTICO ou ALTO ou MÉDIO",
+      "focus": "foco do estudo",
+      "topics": ["tópico 1", "tópico 2", "tópico 3"],
+      "practicalApplications": ["aplicação 1", "aplicação 2"],
       "dailySchedule": {
-        ${daysAvailable <= 1 ? `
-        "Manhã": "Tópico MAIS importante - ${Math.floor(dailyHours * 0.4)}h",
-        "Tarde": "Exercícios ESSENCIAIS - ${Math.floor(dailyHours * 0.4)}h",
-        "Noite": "Revisão ULTRA rápida - ${Math.floor(dailyHours * 0.2)}h"
-        ` : daysAvailable <= 3 ? `
-        "Dia 1": "Conteúdo MAIS crítico - ${Math.floor(dailyHours * 0.8)}h",
-        "Dia 2": "Segundo tópico importante - ${Math.floor(dailyHours * 0.7)}h",
-        "Dia 3": "Revisão e prática - ${Math.floor(dailyHours * 0.5)}h"
-        ` : `
-        "Segunda": "Atividade específica da disciplina - ${Math.floor(dailyHours * 0.8)}h",
-        "Terça": "Exercícios práticos - ${Math.floor(dailyHours * 0.7)}h",
-        "Quarta": "Aprofundamento teórico - ${Math.floor(dailyHours * 0.6)}h",
-        "Quinta": "Problemas complexos - ${Math.floor(dailyHours * 0.8)}h",
-        "Sexta": "Revisão semanal - ${Math.floor(dailyHours * 0.5)}h",
-        "Sábado": "Projeto prático - ${Math.floor(dailyHours * 0.4)}h", 
-        "Domingo": "Descanso - 0h"
-        `}
+        "periodo1": "atividade com horas",
+        "periodo2": "atividade com horas"
       }
     }
   ],
-  "goals": [
-    "Meta REALMENTE alcançável considerando ${daysAvailable} dias"
-  ],
-  "recommendations": [
-    "Recomendação específica para este contexto"
-  ]
+  "goals": ["meta 1", "meta 2", "meta 3"],
+  "recommendations": ["recomendação 1", "recomendação 2", "recomendação 3"]
 }
 
-SEJA BRUTALMENTE HONESTO sobre o que é REALMENTE POSSÍVEL fazer em ${daysAvailable} dias.
-
-Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
+IMPORTANTE: Para ${daysAvailable} dias, crie EXATAMENTE ${maxModules} módulos. Responda SOMENTE com JSON, sem explicações.`;
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      
+      if (!apiKey) {
+        throw new Error('VITE_OPENAI_API_KEY não configurada no arquivo .env');
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
+          model: "gpt-3.5-turbo",
           messages: [
-            { role: "user", content: prompt }
+            {
+              role: "system",
+              content: "Você é um especialista em educação que cria planos de estudo detalhados e realistas. Sempre responda APENAS com JSON válido, sem markdown ou texto adicional."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
           ],
+          temperature: 0.7,
+          max_tokens: 4000
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Erro na API: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Erro OpenAI (${response.status}): ${errorData.error?.message || 'Erro desconhecido'}`);
       }
 
       const data = await response.json();
-      const content = data.content[0].text;
-      const cleanedContent = content.replace(/```json|```/g, '').trim();
-      return JSON.parse(cleanedContent);
+      const content = data.choices[0].message.content;
+      
+      // Remove markdown code blocks se existirem
+      const cleanedContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      // Parse do JSON
+      const parsedData = JSON.parse(cleanedContent);
+      
+      return parsedData;
 
     } catch (error) {
-      console.error('Erro na chamada da API:', error);
+      console.error('Erro detalhado:', error);
+      
+      // Mensagens de erro mais específicas
+      if (error.message.includes('VITE_OPENAI_API_KEY')) {
+        throw new Error('Configure a chave da OpenAI no arquivo .env');
+      }
+      if (error.message.includes('401')) {
+        throw new Error('Chave de API inválida. Verifique VITE_OPENAI_API_KEY');
+      }
+      if (error.message.includes('429')) {
+        throw new Error('Limite de requisições atingido. Aguarde alguns minutos');
+      }
+      if (error.message.includes('JSON')) {
+        throw new Error('Erro ao processar resposta da IA. Tente novamente');
+      }
+      
       throw new Error(`Falha na geração: ${error.message}`);
     }
   };
@@ -268,7 +285,7 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
     setStudyPlan(null);
 
     try {
-      const aiPlan = await generateStudyPlanWithOpenAI();
+      const aiPlan = await generateStudyPlanWithAI();
       
       const completePlan = {
         ...aiPlan,
@@ -313,8 +330,18 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
     if (!studyPlan) return;
 
     try {
-      // Importa jsPDF dinamicamente
-      const { default: jsPDF } = await import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      // Carrega a biblioteca jsPDF do CDN
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      
+      await new Promise((resolve, reject) => {
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+
+      // Acessa jsPDF do objeto global window
+      const { jsPDF } = window.jspdf;
       
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -322,6 +349,14 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
       const margin = 20;
       const maxWidth = pageWidth - 2 * margin;
       let yPosition = margin;
+
+      // Função para remover emojis e caracteres especiais
+      const cleanText = (text) => {
+        return text
+          .replace(/[^\x00-\x7F]/g, '') // Remove caracteres não-ASCII
+          .replace(/\s+/g, ' ') // Remove espaços múltiplos
+          .trim();
+      };
 
       // Função para adicionar nova página se necessário
       const checkNewPage = (requiredSpace = 20) => {
@@ -339,13 +374,22 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
         doc.setFont('helvetica', isBold ? 'bold' : 'normal');
         doc.setTextColor(...color);
         
-        const lines = doc.splitTextToSize(text, maxWidth);
+        const cleanedText = cleanText(text);
+        const lines = doc.splitTextToSize(cleanedText, maxWidth);
         lines.forEach(line => {
           checkNewPage();
           doc.text(line, margin, yPosition);
           yPosition += fontSize * 0.5;
         });
         yPosition += 3;
+      };
+
+      // Função para adicionar linha divisória
+      const addDivider = () => {
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.5);
+        doc.line(margin, yPosition, pageWidth - margin, yPosition);
+        yPosition += 5;
       };
 
       // Cabeçalho
@@ -362,48 +406,45 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
 
       // Informações Gerais
       doc.setTextColor(0, 0, 0);
-      addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
-      addText('📊 INFORMAÇÕES GERAIS', 16, true, [147, 51, 234]);
-      addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
-      yPosition += 5;
+      addDivider();
+      addText('INFORMACOES GERAIS', 16, true, [147, 51, 234]);
+      addDivider();
 
-      addText(`• Nível de Conhecimento: ${studyPlan.knowledgeLevel}`, 11);
-      addText(`• Horas Diárias: ${studyPlan.dailyHours}h`, 11);
-      addText(`• Dias Disponíveis: ${studyPlan.daysAvailable} dias`, 11);
-      addText(`• Duração Total: ${studyPlan.totalDuration}`, 11);
-      addText(`• Intensidade: ${studyPlan.studyIntensity}`, 11);
-      addText(`• Objetivo: ${studyPlan.studyGoal}`, 11);
-      addText(`• Tipo de Estudo: ${studyPlan.hasDeadline ? 'COM prazo definido' : 'Estudo contínuo'}`, 11);
-      addText(`• Probabilidade de Sucesso: ${studyPlan.successProbability}`, 11);
+      addText(`Nivel de Conhecimento: ${studyPlan.knowledgeLevel}`, 11);
+      addText(`Horas Diarias: ${studyPlan.dailyHours}h`, 11);
+      addText(`Dias Disponiveis: ${studyPlan.daysAvailable} dias`, 11);
+      addText(`Duracao Total: ${studyPlan.totalDuration}`, 11);
+      addText(`Intensidade: ${studyPlan.studyIntensity}`, 11);
+      addText(`Objetivo: ${studyPlan.studyGoal}`, 11);
+      addText(`Tipo de Estudo: ${studyPlan.hasDeadline ? 'COM prazo definido' : 'Estudo continuo'}`, 11);
+      addText(`Probabilidade de Sucesso: ${studyPlan.successProbability}`, 11);
       
       yPosition += 5;
 
       // Análise de Viabilidade
       if (studyPlan.timeAssessment) {
         checkNewPage(40);
-        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
-        addText('🔍 ANÁLISE DE VIABILIDADE', 16, true, [220, 38, 38]);
-        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
-        yPosition += 5;
+        addDivider();
+        addText('ANALISE DE VIABILIDADE', 16, true, [220, 38, 38]);
+        addDivider();
         addText(studyPlan.timeAssessment, 11);
         yPosition += 5;
       }
 
       // Módulos
-      addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
-      addText(`📖 MÓDULOS DE ESTUDO (${studyPlan.modules?.length || 0} módulos)`, 16, true, [147, 51, 234]);
-      addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
-      yPosition += 5;
+      addDivider();
+      addText(`MODULOS DE ESTUDO (${studyPlan.modules?.length || 0} modulos)`, 16, true, [147, 51, 234]);
+      addDivider();
 
       studyPlan.modules?.forEach((module, index) => {
         checkNewPage(60);
         
-        addText(`MÓDULO ${index + 1}: ${module.title}`, 14, true, [37, 99, 235]);
-        addText(`Duração: ${module.duration} | Prioridade: ${module.priority} | Foco: ${module.focus}`, 10);
+        addText(`MODULO ${index + 1}: ${module.title}`, 14, true, [37, 99, 235]);
+        addText(`Duracao: ${module.duration} | Prioridade: ${module.priority} | Foco: ${module.focus}`, 10);
         yPosition += 3;
 
         // Tópicos
-        addText('Tópicos Essenciais:', 12, true);
+        addText('Topicos Essenciais:', 12, true);
         module.topics?.forEach((topic, idx) => {
           addText(`  ${idx + 1}. ${topic}`, 10);
         });
@@ -411,7 +452,7 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
 
         // Aplicações Práticas
         if (module.practicalApplications && module.practicalApplications.length > 0) {
-          addText('Aplicações Práticas:', 12, true);
+          addText('Aplicacoes Praticas:', 12, true);
           module.practicalApplications.forEach((app, idx) => {
             addText(`  ${idx + 1}. ${app}`, 10);
           });
@@ -420,7 +461,7 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
 
         // Cronograma
         if (module.dailySchedule) {
-          addText(`Cronograma ${studyPlan.daysAvailable <= 3 ? 'Diário' : 'Semanal'}:`, 12, true);
+          addText(`Cronograma ${studyPlan.daysAvailable <= 3 ? 'Diario' : 'Semanal'}:`, 12, true);
           Object.entries(module.dailySchedule).forEach(([period, task]) => {
             addText(`  ${period}: ${task}`, 10);
           });
@@ -432,10 +473,9 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
       // Metas
       if (studyPlan.goals && studyPlan.goals.length > 0) {
         checkNewPage(40);
-        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
-        addText('🎯 METAS REALISTAS', 16, true, [22, 163, 74]);
-        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
-        yPosition += 5;
+        addDivider();
+        addText('METAS REALISTAS', 16, true, [22, 163, 74]);
+        addDivider();
         studyPlan.goals.forEach((goal, idx) => {
           addText(`${idx + 1}. ${goal}`, 11);
         });
@@ -445,12 +485,11 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
       // Recomendações
       if (studyPlan.recommendations && studyPlan.recommendations.length > 0) {
         checkNewPage(40);
-        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
-        addText('💡 RECOMENDAÇÕES', 16, true, [234, 179, 8]);
-        addText('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 10);
-        yPosition += 5;
+        addDivider();
+        addText('RECOMENDACOES', 16, true, [234, 179, 8]);
+        addDivider();
         studyPlan.recommendations.forEach((rec, idx) => {
-          addText(`• ${rec}`, 11);
+          addText(`${idx + 1}. ${rec}`, 11);
         });
       }
 
@@ -461,7 +500,7 @@ Para ${daysAvailable} dias, crie APENAS ${maxModules} módulos.`;
         doc.setFontSize(8);
         doc.setTextColor(128, 128, 128);
         doc.text(
-          `Gerado em ${new Date().toLocaleDateString('pt-BR')} | Página ${i} de ${totalPages}`,
+          `Gerado em ${new Date().toLocaleDateString('pt-BR')} | Pagina ${i} de ${totalPages}`,
           pageWidth / 2,
           pageHeight - 10,
           { align: 'center' }
